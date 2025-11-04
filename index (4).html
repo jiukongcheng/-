@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游嗨网 - 游戏制作与游玩交流论坛</title>
+    <!-- 外部资源引入 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#1E40AF',
+                        accent: '#0F172A',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+            }
+            .btn-primary {
+                @apply bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300;
+            }
+            .btn-secondary {
+                @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300;
+            }
+            .nav-link {
+                @apply flex items-center gap-3 p-3 rounded-lg transition-all duration-300;
+            }
+            .nav-link.active {
+                @apply bg-white/20 text-white;
+            }
+            .nav-link:not(.active) {
+                @apply text-white/70 hover:text-white hover:bg-white/10;
+            }
+            .card {
+                @apply glass-effect rounded-xl p-4 transition-all duration-300 hover:shadow-xl hover:translate-y-[-5px];
+            }
+            .input-field {
+                @apply bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300;
+            }
+            .like-btn {
+                @apply flex items-center gap-1 text-white/50 hover:text-white transition-all duration-300 cursor-pointer;
+            }
+            .like-btn.liked {
+                @apply text-white;
+            }
+            .share-btn {
+                @apply flex items-center gap-1 text-white/50 hover:text-white transition-all duration-300 cursor-pointer;
+            }
+        }
+        
+        body {
+            background-image: url('https://p3-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/0aa990956410498893e7b0f451dab7a4.jpeg~tplv-a9rns2rl98-24:720:720.jpeg?rcl=20251105004406511D8DC499FFC98828B9&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1762879447&x-signature=RFB2l6E8znrFponwegYzO2nb1Jc%3D');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        /* 模态框动画 */
+        .modal {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+        
+        /* 图片预览样式 */
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+        }
+        
+        /* 文章内容样式 */
+        .article-content {
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body class="text-white font-sans">
+    <!-- 音乐播放器 -->
+    <div id="musicPlayer" class="fixed bottom-0 left-0 right-0 glass-effect p-3 flex items-center justify-between z-50 transform translate-y-full transition-transform duration-300">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                <i class="fa fa-music"></i>
+            </div>
+            <div>
+                <p class="font-medium">Hans Zimmer - Time</p>
+                <p class="text-xs text-white/70">背景音乐</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="musicPlayBtn" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all">
+                <i class="fa fa-play"></i>
+            </button>
+            <button id="musicCloseBtn" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 模态框 -->
+    <div id="modal" class="modal fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modalOverlay"></div>
+        <div class="modal-content glass-effect rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto relative z-10">
+            <button id="modalCloseBtn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all">
+                <i class="fa fa-times"></i>
+            </button>
+            <div id="modalContent">
+                <!-- 动态内容将通过JavaScript填充 -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+        <!-- 左侧边栏 -->
+        <aside class="w-full md:w-64 glass-effect rounded-xl p-4 flex flex-col gap-4 h-fit" data-aos="fade-right" data-aos-delay="200">
+            <nav class="flex flex-col gap-2">
+                <button class="nav-link active" data-section="hot">
+                    <i class="fa fa-fire text-xl w-6"></i>
+                    <span>热门</span>
+                </button>
+                <button class="nav-link" data-section="games">
+                    <i class="fa fa-gamepad text-xl w-6"></i>
+                    <span>游戏</span>
+                </button>
+                <button class="nav-link" data-section="post">
+                    <i class="fa fa-plus-circle text-xl w-6"></i>
+                    <span>投稿</span>
+                </button>
+            </nav>
+            
+            <div class="border-t border-white/20 pt-4 mt-2">
+                <h3 class="font-medium mb-3">分类</h3>
+                <div class="flex flex-wrap gap-2">
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-sm hover:bg-white/20 cursor-pointer transition-all">角色扮演</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-sm hover:bg-white/20 cursor-pointer transition-all">动作冒险</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-sm hover:bg-white/20 cursor-pointer transition-all">策略</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-sm hover:bg-white/20 cursor-pointer transition-all">模拟</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-sm hover:bg-white/20 cursor-pointer transition-all">休闲</span>
+                </div>
+            </div>
+            
+            <div class="border-t border-white/20 pt-4 mt-2">
+                <h3 class="font-medium mb-3">推荐游戏</h3>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer transition-all">
+                        <div class="w-12 h-12 rounded bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center">
+                            <i class="fa fa-rocket"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-sm">星际探险</p>
+                            <p class="text-xs text-white/70">开放世界</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer transition-all">
+                        <div class="w-12 h-12 rounded bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center">
+                            <i class="fa fa-tree"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-sm">森林冒险</p>
+                            <p class="text-xs text-white/70">生存</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer transition-all">
+                        <div class="w-12 h-12 rounded bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                            <i class="fa fa-magic"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-sm">魔法世界</p>
+                            <p class="text-xs text-white/70">角色扮演</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 - 包含头部和内容区域 -->
+        <main class="flex-1 flex flex-col gap-6">
+            <!-- 头部 - 位于主栏最顶端 -->
+            <header class="w-full glass-effect rounded-xl p-4 flex items-center justify-between" data-aos="fade-down" data-aos-delay="100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <i class="fa fa-gamepad"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold">游嗨网</h1>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-4 flex-1 max-w-md mx-4">
+                    <div class="relative w-full">
+                        <input type="text" placeholder="搜索游戏、帖子或用户..." class="input-field w-full pl-10">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="musicToggleBtn" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                        <i class="fa fa-music"></i>
+                    </button>
+                    <button class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                        <i class="fa fa-user"></i>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- 内容区域 -->
+            <div class="flex-1">
+                <!-- 热门内容区域 -->
+                <section id="hotSection" class="space-y-6">
+                    <div class="glass-effect rounded-xl p-6" data-aos="fade-up" data-aos-delay="300">
+                        <h2 class="text-2xl font-bold mb-4">热门讨论</h2>
+                        <div id="hotContent" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 内容将通过JavaScript动态填充 -->
+                            <div class="no-content card flex flex-col items-center justify-center py-12">
+                                <i class="fa fa-inbox text-4xl mb-4 text-white/50"></i>
+                                <p class="text-xl text-white/70">暂时没有内容喵</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 游戏内容区域 -->
+                <section id="gamesSection" class="space-y-6 hidden">
+                    <div class="glass-effect rounded-xl p-6" data-aos="fade-up" data-aos-delay="300">
+                        <h2 class="text-2xl font-bold mb-4">游戏资源</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- 空状态 -->
+                            <div class="no-content card flex flex-col items-center justify-center py-12 col-span-full">
+                                <i class="fa fa-gamepad text-4xl mb-4 text-white/50"></i>
+                                <p class="text-xl text-white/70">暂时没有资源喵</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 投稿区域 -->
+                <section id="postSection" class="space-y-6 hidden">
+                    <div class="glass-effect rounded-xl p-6" data-aos="fade-up" data-aos-delay="300">
+                        <h2 class="text-2xl font-bold mb-4">发布文章</h2>
+                        <form id="postForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">标题</label>
+                                <input type="text" id="postTitle" class="input-field w-full" placeholder="输入标题..." required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">内容</label>
+                                <textarea id="postContent" class="input-field w-full h-40" placeholder="分享你的游戏制作经验或游玩心得..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">标签</label>
+                                <input type="text" id="postTags" class="input-field w-full" placeholder="添加标签，用逗号分隔...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">上传图片</label>
+                                <div class="border-2 border-dashed border-white/30 rounded-lg p-6 text-center hover:border-white/50 transition-all cursor-pointer mb-3" id="dropArea">
+                                    <i class="fa fa-cloud-upload text-3xl mb-2 text-white/50"></i>
+                                    <p class="text-white/70">点击或拖拽图片到此处上传</p>
+                                    <p class="text-xs text-white/50 mt-1">支持JPG、PNG格式</p>
+                                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                                </div>
+                                <div id="imagePreviewContainer" class="hidden">
+                                    <img id="imagePreview" src="" alt="预览图" class="image-preview rounded-lg mx-auto">
+                                    <button type="button" id="removeImage" class="mt-2 text-sm text-white/70 hover:text-white">
+                                        <i class="fa fa-times"></i> 移除图片
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="button" class="btn-secondary mr-2">保存草稿</button>
+                                <button type="submit" class="btn-primary">发布</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // 初始化AOS动画库
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 800,
+                easing: 'ease-out',
+                once: true
+            });
+            
+            // 数据管理
+            const DataManager = {
+                // 获取所有文章
+                getArticles() {
+                    const articles = localStorage.getItem('gameForumArticles');
+                    return articles ? JSON.parse(articles) : [];
+                },
+                
+                // 保存文章
+                saveArticle(article) {
+                    const articles = this.getArticles();
+                    // 添加唯一ID和时间戳
+                    article.id = Date.now().toString();
+                    article.timestamp = new Date().toISOString();
+                    article.likes = 0;
+                    article.shares = 0;
+                    article.userLiked = false;
+                    
+                    articles.push(article);
+                    localStorage.setItem('gameForumArticles', JSON.stringify(articles));
+                    return article;
+                },
+                
+                // 更新文章点赞数
+                toggleLike(articleId) {
+                    const articles = this.getArticles();
+                    const article = articles.find(a => a.id === articleId);
+                    
+                    if (article) {
+                        if (article.userLiked) {
+                            article.likes--;
+                        } else {
+                            article.likes++;
+                        }
+                        article.userLiked = !article.userLiked;
+                        localStorage.setItem('gameForumArticles', JSON.stringify(articles));
+                        return article;
+                    }
+                    return null;
+                },
+                
+                // 增加转发数
+                incrementShare(articleId) {
+                    const articles = this.getArticles();
+                    const article = articles.find(a => a.id === articleId);
+                    
+                    if (article) {
+                        article.shares++;
+                        localStorage.setItem('gameForumArticles', JSON.stringify(articles));
+                        return article;
+                    }
+                    return null;
+                },
+                
+                // 获取热门文章（按点赞数排序）
+                getHotArticles() {
+                    return this.getArticles()
+                        .sort((a, b) => b.likes - a.likes)
+                        .slice(0, 10);
+                }
+            };
+            
+            // 渲染管理
+            const RenderManager = {
+                // 渲染热门文章
+                renderHotArticles() {
+                    const hotContent = document.getElementById('hotContent');
+                    const articles = DataManager.getHotArticles();
+                    
+                    // 清空现有内容
+                    hotContent.innerHTML = '';
+                    
+                    if (articles.length === 0) {
+                        // 显示空状态
+                        hotContent.innerHTML = `
+                            <div class="no-content card flex flex-col items-center justify-center py-12">
+                                <i class="fa fa-inbox text-4xl mb-4 text-white/50"></i>
+                                <p class="text-xl text-white/70">暂时没有内容喵</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // 渲染文章列表
+                    articles.forEach(article => {
+                        const articleElement = document.createElement('div');
+                        articleElement.className = 'card';
+                        articleElement.setAttribute('data-aos', 'fade-up');
+                        
+                        // 格式化日期
+                        const date = new Date(article.timestamp);
+                        const formattedDate = `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                        
+                        articleElement.innerHTML = `
+                            <div class="flex flex-col gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0"></div>
+                                    <div>
+                                        <div class="font-medium">用户</div>
+                                        <div class="text-xs text-white/50">${formattedDate}</div>
+                                    </div>
+                                </div>
+                                
+                                <h3 class="font-bold text-lg">${article.title}</h3>
+                                
+                                ${article.imageUrl ? `
+                                    <div class="rounded-lg overflow-hidden">
+                                        <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover">
+                                    </div>
+                                ` : ''}
+                                
+                                <p class="text-white/70 text-sm line-clamp-2">${article.content}</p>
+                                
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    ${article.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => `
+                                        <span class="px-2 py-1 rounded-full bg-white/10 text-xs">${tag}</span>
+                                    `).join('')}
+                                </div>
+                                
+                                <div class="flex items-center justify-between mt-2">
+                                    <div class="flex items-center gap-4">
+                                        <div class="like-btn ${article.userLiked ? 'liked' : ''}" data-id="${article.id}">
+                                            <i class="fa fa-thumbs-up"></i>
+                                            <span>${article.likes}</span>
+                                        </div>
+                                        <div class="share-btn" data-id="${article.id}">
+                                            <i class="fa fa-share"></i>
+                                            <span>${article.shares}</span>
+                                        </div>
+                                    </div>
+                                    <button class="text-sm text-white/50 hover:text-white transition-colors view-article" data-id="${article.id}">
+                                        查看全文
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        hotContent.appendChild(articleElement);
+                    });
+                    
+                    // 添加点赞事件监听
+                    document.querySelectorAll('.like-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const articleId = this.getAttribute('data-id');
+                            const updatedArticle = DataManager.toggleLike(articleId);
+                            if (updatedArticle) {
+                                this.classList.toggle('liked', updatedArticle.userLiked);
+                                this.querySelector('span').textContent = updatedArticle.likes;
+                                // 重新渲染热门文章以保持排序
+                                RenderManager.renderHotArticles();
+                            }
+                        });
+                    });
+                    
+                    // 添加转发事件监听
+                    document.querySelectorAll('.share-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const articleId = this.getAttribute('data-id');
+                            const updatedArticle = DataManager.incrementShare(articleId);
+                            if (updatedArticle) {
+                                this.querySelector('span').textContent = updatedArticle.shares;
+                            }
+                        });
+                    });
+                    
+                    // 添加查看全文事件监听
+                    document.querySelectorAll('.view-article').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const articleId = this.getAttribute('data-id');
+                            const articles = DataManager.getArticles();
+                            const article = articles.find(a => a.id === articleId);
+                            
+                            if (article) {
+                                const date = new Date(article.timestamp);
+                                const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                                
+                                openModal(`
+                                    <div class="py-4">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0"></div>
+                                            <div>
+                                                <div class="font-medium">用户</div>
+                                                <div class="text-xs text-white/50">${formattedDate}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <h2 class="text-2xl font-bold mb-4">${article.title}</h2>
+                                        
+                                        ${article.imageUrl ? `
+                                            <div class="rounded-lg overflow-hidden mb-4">
+                                                <img src="${article.imageUrl}" alt="${article.title}" class="w-full object-cover">
+                                            </div>
+                                        ` : ''}
+                                        
+                                        <div class="text-white/90 article-content mb-6">${article.content}</div>
+                                        
+                                        <div class="flex flex-wrap gap-2 mb-6">
+                                            ${article.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => `
+                                                <span class="px-2 py-1 rounded-full bg-white/10 text-xs">${tag}</span>
+                                            `).join('')}
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-6">
+                                            <div class="like-btn ${article.userLiked ? 'liked' : ''}" data-id="${article.id}">
+                                                <i class="fa fa-thumbs-up"></i>
+                                                <span>${article.likes}</span>
+                                            </div>
+                                            <div class="share-btn" data-id="${article.id}">
+                                                <i class="fa fa-share"></i>
+                                                <span>${article.shares}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `);
+                                
+                                // 为模态框内的点赞按钮添加事件
+                                setTimeout(() => {
+                                    const modalLikeBtn = document.querySelector(`.modal .like-btn[data-id="${articleId}"]`);
+                                    if (modalLikeBtn) {
+                                        modalLikeBtn.addEventListener('click', function() {
+                                            const updatedArticle = DataManager.toggleLike(articleId);
+                                            if (updatedArticle) {
+                                                this.classList.toggle('liked', updatedArticle.userLiked);
+                                                this.querySelector('span').textContent = updatedArticle.likes;
+                                                // 更新列表中的点赞状态
+                                                RenderManager.renderHotArticles();
+                                            }
+                                        });
+                                    }
+                                    
+                                    // 为模态框内的分享按钮添加事件
+                                    const modalShareBtn = document.querySelector(`.modal .share-btn[data-id="${articleId}"]`);
+                                    if (modalShareBtn) {
+                                        modalShareBtn.addEventListener('click', function() {
+                                            const updatedArticle = DataManager.incrementShare(articleId);
+                                            if (updatedArticle) {
+                                                this.querySelector('span').textContent = updatedArticle.shares;
+                                                // 更新列表中的分享状态
+                                                RenderManager.renderHotArticles();
+                                            }
+                                        });
+                                    }
+                                }, 100);
+                            }
+                        });
+                    });
+                },
+                
+                // 初始化页面
+                init() {
+                    this.renderHotArticles();
+                }
+            };
+            
+            // 导航切换
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = {
+                'hot': document.getElementById('hotSection'),
+                'games': document.getElementById('gamesSection'),
+                'post': document.getElementById('postSection')
+            };
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    const targetSection = this.getAttribute('data-section');
+                    
+                    // 更新导航状态
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 更新内容区域
+                    Object.keys(sections).forEach(key => {
+                        sections[key].classList.add('hidden');
+                    });
+                    sections[targetSection].classList.remove('hidden');
+                });
+            });
+            
+            // 模态框功能
+            const modal = document.getElementById('modal');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalCloseBtn = document.getElementById('modalCloseBtn');
+            const modalContent = document.getElementById('modalContent');
+            
+            window.openModal = function(content) {
+                modalContent.innerHTML = content;
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            function closeModal() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            modalOverlay.addEventListener('click', closeModal);
+            modalCloseBtn.addEventListener('click', closeModal);
+            
+            // 音乐播放器功能
+            const musicToggleBtn = document.getElementById('musicToggleBtn');
+            const musicPlayer = document.getElementById('musicPlayer');
+            const musicPlayBtn = document.getElementById('musicPlayBtn');
+            const musicCloseBtn = document.getElementById('musicCloseBtn');
+            let isPlaying = false;
+            
+            musicToggleBtn.addEventListener('click', function() {
+                musicPlayer.classList.toggle('translate-y-full');
+            });
+            
+            musicCloseBtn.addEventListener('click', function() {
+                musicPlayer.classList.add('translate-y-full');
+                isPlaying = false;
+                musicPlayBtn.innerHTML = '<i class="fa fa-play"></i>';
+            });
+            
+            musicPlayBtn.addEventListener('click', function() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    musicPlayBtn.innerHTML = '<i class="fa fa-pause"></i>';
+                    // 实际项目中可添加音乐播放逻辑
+                } else {
+                    musicPlayBtn.innerHTML = '<i class="fa fa-play"></i>';
+                    // 实际项目中可添加音乐暂停逻辑
+                }
+            });
+            
+            // 图片上传功能
+            const dropArea = document.getElementById('dropArea');
+            const imageUpload = document.getElementById('imageUpload');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const removeImage = document.getElementById('removeImage');
+            
+            // 点击上传区域触发文件选择
+            dropArea.addEventListener('click', () => {
+                imageUpload.click();
+            });
+            
+            // 拖拽功能
+            dropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropArea.classList.add('border-blue-400');
+            });
+            
+            dropArea.addEventListener('dragleave', () => {
+                dropArea.classList.remove('border-blue-400');
+            });
+            
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('border-blue-400');
+                
+                if (e.dataTransfer.files.length) {
+                    imageUpload.files = e.dataTransfer.files;
+                    handleImageUpload(imageUpload.files[0]);
+                }
+            });
+            
+            // 处理文件选择
+            imageUpload.addEventListener('change', () => {
+                if (imageUpload.files.length) {
+                    handleImageUpload(imageUpload.files[0]);
+                }
+            });
+            
+            // 移除图片
+            removeImage.addEventListener('click', () => {
+                imagePreview.src = '';
+                imagePreviewContainer.classList.add('hidden');
+                imageUpload.value = '';
+            });
+            
+            // 处理图片上传并预览
+            function handleImageUpload(file) {
+                // 检查文件类型
+                if (!file.type.startsWith('image/')) {
+                    alert('请上传图片文件');
+                    return;
+                }
+                
+                // 读取图片并显示预览
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // 表单提交处理
+            const postForm = document.getElementById('postForm');
+            postForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // 获取表单数据
+                const title = document.getElementById('postTitle').value.trim();
+                const content = document.getElementById('postContent').value.trim();
+                const tags = document.getElementById('postTags').value.trim();
+                const imageUrl = imagePreview.src || '';
+                
+                if (!title) {
+                    alert('请输入标题');
+                    return;
+                }
+                
+                // 保存文章
+                const article = {
+                    title,
+                    content,
+                    tags,
+                    imageUrl
+                };
+                
+                DataManager.saveArticle(article);
+                
+                // 显示成功消息
+                openModal(`
+                    <div class="text-center py-6">
+                        <div class="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa fa-check text-2xl text-green-400"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">发布成功！</h3>
+                        <p class="text-white/70 mb-6">你的文章已成功发布到游嗨网</p>
+                        <button class="btn-primary" onclick="closeModal()">确定</button>
+                    </div>
+                `);
+                
+                // 重置表单
+                postForm.reset();
+                imagePreview.src = '';
+                imagePreviewContainer.classList.add('hidden');
+                
+                // 切换到热门内容区域
+                document.querySelector('[data-section="hot"]').click();
+                
+                // 更新热门内容
+                RenderManager.renderHotArticles();
+            });
+            
+            // 搜索功能
+            const searchInput = document.querySelector('input[placeholder="搜索游戏、帖子或用户..."]');
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && this.value.trim()) {
+                    const searchTerm = this.value.trim();
+                    const articles = DataManager.getArticles();
+                    const results = articles.filter(article => 
+                        article.title.includes(searchTerm) || 
+                        article.content.includes(searchTerm) ||
+                        article.tags.includes(searchTerm)
+                    );
+                    
+                    let resultsHTML = `<h3 class="text-xl font-bold mb-4">搜索结果: ${searchTerm}</h3>`;
+                    
+                    if (results.length === 0) {
+                        resultsHTML += `
+                            <p class="text-white/70 mb-6">抱歉，没有找到相关内容</p>
+                        `;
+                    } else {
+                        resultsHTML += `<div class="space-y-4">`;
+                        results.forEach(article => {
+                            resultsHTML += `
+                                <div class="card p-4">
+                                    <h4 class="font-bold mb-2">${article.title}</h4>
+                                    <p class="text-white/70 text-sm line-clamp-2 mb-2">${article.content}</p>
+                                    <button class="text-sm text-blue-400 hover:text-blue-300 view-article" data-id="${article.id}">
+                                        查看全文
+                                    </button>
+                                </div>
+                            `;
+                        });
+                        resultsHTML += `</div>`;
+                    }
+                    
+                    resultsHTML += `<button class="btn-primary mt-6" onclick="closeModal()">关闭</button>`;
+                    
+                    openModal(resultsHTML);
+                    
+                    // 为搜索结果中的查看全文按钮添加事件
+                    setTimeout(() => {
+                        document.querySelectorAll('.modal .view-article').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const articleId = this.getAttribute('data-id');
+                                const articles = DataManager.getArticles();
+                                const article = articles.find(a => a.id === articleId);
+                                
+                                if (article) {
+                                    const date = new Date(article.timestamp);
+                                    const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                                    
+                                    openModal(`
+                                        <div class="py-4">
+                                            <div class="flex items-center gap-3 mb-4">
+                                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0"></div>
+                                                <div>
+                                                    <div class="font-medium">用户</div>
+                                                    <div class="text-xs text-white/50">${formattedDate}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <h2 class="text-2xl font-bold mb-4">${article.title}</h2>
+                                            
+                                            ${article.imageUrl ? `
+                                                <div class="rounded-lg overflow-hidden mb-4">
+                                                    <img src="${article.imageUrl}" alt="${article.title}" class="w-full object-cover">
+                                                </div>
+                                            ` : ''}
+                                            
+                                            <div class="text-white/90 article-content mb-6">${article.content}</div>
+                                            
+                                            <div class="flex flex-wrap gap-2 mb-6">
+                                                ${article.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => `
+                                                    <span class="px-2 py-1 rounded-full bg-white/10 text-xs">${tag}</span>
+                                                `).join('')}
+                                            </div>
+                                            
+                                            <div class="flex items-center gap-6">
+                                                <div class="like-btn ${article.userLiked ? 'liked' : ''}" data-id="${article.id}">
+                                                    <i class="fa fa-thumbs-up"></i>
+                                                    <span>${article.likes}</span>
+                                                </div>
+                                                <div class="share-btn" data-id="${article.id}">
+                                                    <i class="fa fa-share"></i>
+                                                    <span>${article.shares}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `);
+                                }
+                            });
+                        });
+                    }, 100);
+                }
+            });
+            
+            // 初始化页面
+            RenderManager.init();
+        });
+    </script>
+</body>
+</html>
